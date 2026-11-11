@@ -68,6 +68,27 @@ select.input-field{appearance:none;-webkit-appearance:none;background:#fff url("
 .total-detail{font-size:12px;opacity:.72}
 .footer{text-align:center;padding:16px;font-size:11px;color:#ccc;line-height:1.7}
 .note-box{background:#fffbe6;border:1px solid #ffe58f;border-radius:8px;padding:10px 14px;font-size:12px;color:#ad8b00;margin-top:12px;line-height:1.6}
+.btn-export{width:100%;padding:14px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--green) 0%,var(--green-dark) 100%);color:#fff;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-export:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(7,193,96,.3)}
+.btn-export:active{transform:translateY(0)}
+.btn-export .btn-ico{font-size:16px}
+.toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%) translateY(20px);background:rgba(0,0,0,.82);color:#fff;padding:12px 22px;border-radius:24px;font-size:13px;opacity:0;transition:all .3s;pointer-events:none;z-index:999;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.mask{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:1000;padding:24px}
+.mask.show{display:flex}
+.pwd-box{background:#fff;border-radius:16px;padding:26px 22px 20px;width:100%;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,.18);animation:pop .2s ease}
+@keyframes pop{from{transform:scale(.92);opacity:.6}to{transform:scale(1);opacity:1}}
+.pwd-box h3{font-size:16px;font-weight:600;margin-bottom:6px;text-align:center}
+.pwd-box p{font-size:12px;color:var(--text3);text-align:center;margin-bottom:18px}
+.pwd-input{width:100%;padding:12px 14px;border:1.5px solid #e0e0e0;border-radius:9px;font-size:16px;outline:none;text-align:center;letter-spacing:2px;font-family:inherit;transition:border-color .15s}
+.pwd-input:focus{border-color:var(--green)}
+.pwd-input.err{border-color:var(--red);animation:shake .3s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.pwd-btns{display:flex;gap:10px;margin-top:16px}
+.pwd-btn{flex:1;padding:11px;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .15s}
+.pwd-btn:active{opacity:.75}
+.pwd-btn.cancel{background:#f0f0f0;color:var(--text2)}
+.pwd-btn.ok{background:linear-gradient(135deg,var(--green),var(--green-dark));color:#fff}
 @media(max-width:420px){.sel-group{gap:6px}.sel-item{padding:8px 4px;font-size:12px}.rtable th,.rtable td{padding:8px 6px;font-size:12px}.container{padding:0 10px 20px}}
 </style>
 </head>
@@ -83,6 +104,13 @@ select.input-field{appearance:none;-webkit-appearance:none;background:#fff url("
   <!-- 基础信息 -->
   <div class="card">
     <div class="card-title"><span class="ico">📋</span> 基础信息</div>
+    <div class="form-group">
+      <label class="form-label">客户名称</label>
+      <div class="input-row">
+        <input type="text" class="input-field" id="inClient" placeholder="如：罗莱" oninput="calc()">
+        <span class="input-unit"></span>
+      </div>
+    </div>
     <div class="form-group">
       <label class="form-label">选择行业</label>
       <div class="sel-group" id="grpIndustry">
@@ -168,11 +196,15 @@ select.input-field{appearance:none;-webkit-appearance:none;background:#fff url("
 
   <!-- 成长卡 -->
   <div class="card">
-    <div class="card-title toggle-hd" id="gcToggle" onclick="toggleGC()">
-      <span><span class="ico">🎯</span> 直播大场激励（成长卡加算）</span>
-      <span class="arr">▶</span>
+    <div class="card-title"><span class="ico">🎯</span> 直播大场激励（成长卡）</div>
+    <div class="form-group" style="margin-bottom:0">
+      <label class="form-label">是否报名直播大场激励</label>
+      <div class="sel-group" id="grpGc">
+        <div class="sel-item" data-v="否" onclick="pickGC(this)">否<small>不参与成长卡</small></div>
+        <div class="sel-item active" data-v="是" onclick="pickGC(this)">是<small>测算成长卡收益</small></div>
+      </div>
     </div>
-    <div class="collapse" id="gcBody">
+    <div class="collapse" id="gcBody" style="max-height:0">
       <div style="padding-top:16px">
         <div class="form-group">
           <label class="form-label">大场预估有效GMV</label>
@@ -213,6 +245,29 @@ select.input-field{appearance:none;-webkit-appearance:none;background:#fff url("
     <div class="total-detail" id="totalDet"></div>
   </div>
 
+  <!-- 导出 -->
+  <div class="card">
+    <button class="btn-export" onclick="openPwd()">
+      <span class="btn-ico">⬇</span>
+      导出算账结果（CSV）
+    </button>
+    <div class="form-hint" style="text-align:center;margin-top:10px">测算完一个客户后点导出即自动存档，可切换客户继续测算，最后一次性下载全部记录</div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="mask" id="pwdMask">
+  <div class="pwd-box">
+    <h3>导出验证</h3>
+    <p>请输入导出密码</p>
+    <input type="password" class="pwd-input" id="pwdInput" placeholder="••••••" onkeydown="if(event.key==='Enter')checkPwd()">
+    <div class="pwd-btns">
+      <button class="pwd-btn cancel" onclick="closePwd()">取消</button>
+      <button class="pwd-btn ok" onclick="checkPwd()">确认导出</button>
+    </div>
+  </div>
 </div>
 
 <div class="footer">
@@ -266,7 +321,9 @@ var DISCOUNT = {
 
 // ========== 状态 ==========
 var S = {industry:'居家日用', identity:'普通商家'};
-var gcOpen = false;
+var gcOn = true;
+var R = {};
+var STORE_KEY = 'wx1111_calc_records';
 
 // ========== 工具 ==========
 function $(id){return document.getElementById(id)}
@@ -286,10 +343,13 @@ function pick(type,el){
   calc();
 }
 
-function toggleGC(){
-  gcOpen=!gcOpen;
-  $('gcToggle').classList.toggle('open',gcOpen);
-  $('gcBody').classList.toggle('open',gcOpen);
+function pickGC(el){
+  el.parentElement.querySelectorAll('.sel-item').forEach(function(e){e.classList.remove('active')});
+  el.classList.add('active');
+  gcOn = el.dataset.v==='是';
+  var body=$('gcBody');
+  if(gcOn){ body.style.maxHeight='900px'; body.style.overflow='visible'; }
+  else { body.style.maxHeight='0'; body.style.overflow='hidden'; }
   calc();
 }
 
@@ -428,7 +488,9 @@ function calc(){
   var exProfit=exOrders*profitNoAd;
 
   var gcEl=$('gcResult');
-  if(gmvW>=10){
+  if(!gcOn){
+    gcEl.innerHTML='';
+  } else if(gmvW>=10){
     gcEl.innerHTML='<div style="margin-top:12px;padding-top:12px;border-top:1px solid #eee">'
       +'<table class="rtable"><tbody>'
       +'<tr><td>基础激励（'+findGCRate(gmvW)+'）</td><td style="text-align:right">'+fmt(gc.bp,0)+'点</td></tr>'
@@ -436,7 +498,7 @@ function calc(){
       +'<tr><td>跃迁激励</td><td style="text-align:right">'+fmt(gc.lp,0)+'点</td></tr>'
       +'<tr class="row-hl"><td>成长卡合计</td><td style="text-align:right">'+fmt(totalPts,0)+'点 ≈ '+fmt(adBudget,0)+'元</td></tr>'
       +'<tr><td>投流带来额外GMV</td><td style="text-align:right">'+fmt(adBudget,0)+' × '+roi+' = '+fmt(exGMV,0)+'元</td></tr>'
-      +'<tr><td>额外订单（0广告费，扣退货）</td><td style="text-align:right">'+fmt(exOrdersRaw,0)+'单 × '+(100-retAct*100)+'% = '+fmt(exOrders,0)+'单</td></tr>'
+      +'<tr><td>额外订单（0广告费，扣退货）</td><td style="text-align:right">'+fmt(exOrdersRaw,0)+'单 × '+fmt(100-retAct*100,0)+'% = '+fmt(exOrders,0)+'单</td></tr>'
       +'<tr class="row-hl"><td>成长卡额外利润</td><td style="text-align:right;color:var(--green);font-weight:600">+'+fmt(exProfit,0)+'元</td></tr>'
       +'</tbody></table>'
       +'<div class="form-hint" style="margin-top:8px">成长卡为免费投流额度，1点≈0.1元 · 需大场满减商品GMV占比≥50%方可获叠加激励</div>'
@@ -447,14 +509,30 @@ function calc(){
   }
 
   // ========== 总计 ==========
-  var gcExtra=gcOpen&&gmvW>=10?exProfit:0;
+  var gcValid = gcOn && gmvW>=10;
+  var gcExtra = gcValid ? exProfit : 0;
   var total=diff+gcExtra;
   var tIsP=total>=0;
   $('totalCard').className='total-card '+(tIsP?'pos-card':'neg-card');
   $('totalVal').textContent=sign(total,0)+'元/天';
   var parts=['日销利润差额 '+sign(diff,0)+'元'];
-  if(gcOpen&&gmvW>=10) parts.push('成长卡增收 +'+fmt(gcExtra,0)+'元');
+  if(gcValid) parts.push('成长卡增收 +'+fmt(gcExtra,0)+'元');
   $('totalDet').textContent=parts.join(' ＋ ');
+
+  // 保存结果供导出
+  R = {
+    client: ($('inClient').value||'').trim() || '未命名客户',
+    industry: ind, identity: ident,
+    price: price, cost: cost, adCost: adCost, sales: sales,
+    retBase: retBase*100, retAct: retAct*100,
+    cvr: c.ok?c.cvr:'', cvrTier: c.lb,
+    bProfit: bProfit, bSalesEff: bSalesEff, bDaily: bDaily,
+    mCost: mCost, rProfit: rProfit, rSalesEff: rSalesEff, rDaily: rDaily,
+    diff: diff, pct: pct,
+    gcOn: gcOn, gmv: gcOn?gmvW:'', gcPoints: gcOn?totalPts:'',
+    gcBudget: gcOn?adBudget:'', gcProfit: gcValid?exProfit:'',
+    total: total
+  };
 }
 
 function findGCRate(gmvW){
@@ -464,8 +542,128 @@ function findGCRate(gmvW){
   return '3%';
 }
 
+// ========== 本地存储 ==========
+function loadRecords(){
+  try{ return JSON.parse(localStorage.getItem(STORE_KEY)||'[]'); }catch(e){ return []; }
+}
+function saveRecord(rec){
+  var list=loadRecords();
+  // 同名客户覆盖，避免重复
+  var idx=-1;
+  for(var i=0;i<list.length;i++){ if(list[i].client===rec.client) idx=i; }
+  if(idx>=0) list[idx]=rec; else list.push(rec);
+  try{ localStorage.setItem(STORE_KEY,JSON.stringify(list)); }catch(e){}
+}
+
+// ========== Toast ==========
+var toastTimer=null;
+function toast(msg){
+  var t=$('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){ t.classList.remove('show'); },2200);
+}
+
+// ========== 密码弹窗 ==========
+var EXPORT_PWD = 'peipei11';
+
+function openPwd(){
+  if(!R||!R.client){ toast('请先填写客户名称'); return; }
+  var m=$('pwdMask'), i=$('pwdInput');
+  i.value=''; i.classList.remove('err');
+  m.classList.add('show');
+  setTimeout(function(){ i.focus(); },50);
+}
+
+function closePwd(){
+  $('pwdMask').classList.remove('show');
+}
+
+function checkPwd(){
+  var i=$('pwdInput');
+  if(i.value===EXPORT_PWD){
+    closePwd();
+    exportCSV();
+  } else {
+    i.classList.add('err');
+    i.value='';
+    setTimeout(function(){ i.classList.remove('err'); },400);
+    toast('密码错误');
+  }
+}
+
+// 点击遮罩关闭
+$('pwdMask').addEventListener('click',function(e){
+  if(e.target===this) closePwd();
+});
+
+// ========== CSV导出 ==========
+function exportCSV(){
+  if(!R||!R.client){ toast('请先填写客户名称'); return; }
+  saveRecord(R);
+  var list=loadRecords();
+  if(list.length===0){ toast('暂无记录'); return; }
+
+  var BOM='\uFEFF';
+  var head=[
+    '客户名称','行业','商家身份','商品标价(元)','成本/单(元)','广告转化成本/单(元)',
+    '日销量基线','日常退货率','活动退货率','CVR提升%','CVR价格档',
+    '基线利润/单(元)','基线有效单量','基线日利润(元)',
+    '券成本/单(元)','报名利润/单(元)','报名有效单量','报名日利润(元)',
+    '日增收(元)','增收比例','是否报名大场激励','大场有效GMV(万元)',
+    '成长卡点数','成长卡广告额度(元)','成长卡额外利润(元)','日增收合计(元)'
+  ];
+
+  function esc(s){
+    if(s===null||s===undefined) return '';
+    s=String(s);
+    if(s.indexOf(',')>=0||s.indexOf('"')>=0||s.indexOf('\n')>=0){
+      return '"'+s.replace(/"/g,'""')+'"';
+    }
+    return s;
+  }
+
+  var lines=[head.map(esc).join(',')];
+  for(var i=0;i<list.length;i++){
+    var r=list[i];
+    var row=[
+      r.client, r.industry, r.identity,
+      r.price, r.cost, r.adCost, r.sales,
+      r.retBase+'%', r.retAct+'%',
+      r.cvr, r.cvrTier,
+      r.bProfit.toFixed(1), r.bSalesEff, r.bDaily.toFixed(0),
+      r.mCost.toFixed(1), r.rProfit.toFixed(1), r.rSalesEff, r.rDaily.toFixed(0),
+      r.diff.toFixed(0), (r.pct).toFixed(1)+'%',
+      r.gcOn?'是':'否', r.gmv||'',
+      r.gcPoints?Math.round(r.gcPoints):'', r.gcBudget?Math.round(r.gcBudget):'',
+      r.gcProfit!==''?Math.round(r.gcProfit):'',
+      Math.round(r.total)
+    ];
+    lines.push(row.map(esc).join(','));
+  }
+
+  var csv=BOM+lines.join('\r\n');
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  var d=new Date();
+  var stamp=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+  a.href=url;
+  a.download='双十一算账_'+stamp+'.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); },100);
+  toast('已导出 '+list.length+' 条记录');
+}
+
 // 初始化
-calc();
+(function(){
+  var body=$('gcBody');
+  if(gcOn){ body.style.maxHeight='900px'; body.style.overflow='visible'; }
+  calc();
+})();
 </script>
 </body>
 </html>
