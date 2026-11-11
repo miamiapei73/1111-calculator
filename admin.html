@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理端 · 双十一算账记录</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--green:#07C160;--green-dark:#06AD56;--green-light:#f0faf4;--red:#FA5151;--text:#333;--text2:#666;--text3:#999;--border:#e8e8e8;--bg:#f5f6fa;--card:#fff}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased}
+/* 登录 */
+#loginView{position:fixed;inset:0;background:linear-gradient(160deg,#1a2b4a 0%,#0f1a2e 100%);display:flex;align-items:center;justify-content:center;padding:24px;z-index:10}
+.login-box{background:#fff;border-radius:16px;padding:34px 28px 26px;width:100%;max-width:350px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.login-box .lock{text-align:center;font-size:34px;margin-bottom:14px}
+.login-box h2{font-size:18px;font-weight:700;text-align:center;margin-bottom:6px}
+.login-box .sub{font-size:12px;color:var(--text3);text-align:center;margin-bottom:24px}
+.login-input{width:100%;padding:13px 15px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:16px;outline:none;text-align:center;letter-spacing:3px;font-family:inherit;transition:border-color .15s}
+.login-input:focus{border-color:var(--green)}
+.login-input.err{border-color:var(--red);animation:shake .3s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+.login-btn{width:100%;margin-top:14px;padding:14px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--green),var(--green-dark));color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 5px 16px rgba(7,193,96,.35)}
+.login-err{font-size:12px;color:var(--red);text-align:center;margin-top:12px;height:16px}
+
+/* 主体 */
+#adminView{display:none;padding-bottom:40px}
+.topbar{background:linear-gradient(135deg,#1a2b4a 0%,#0f1a2e 100%);color:#fff;padding:22px 20px}
+.topbar .inner{max-width:1180px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.topbar h1{font-size:17px;font-weight:700}
+.topbar .meta{font-size:12px;opacity:.65;margin-top:2px}
+.btn-logout{padding:7px 16px;border:1px solid rgba(255,255,255,.28);background:transparent;color:#fff;border-radius:16px;font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn-logout:hover{background:rgba(255,255,255,.12)}
+.wrap{max-width:1180px;margin:0 auto;padding:20px}
+
+/* 统计卡 */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.stat{background:#fff;border-radius:11px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.stat .k{font-size:11px;color:var(--text3);margin-bottom:5px}
+.stat .n{font-size:23px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat .n.g{color:var(--green)}
+.stat .n.r{color:var(--red)}
+
+/* 操作栏 */
+.toolbar{background:#fff;border-radius:11px;padding:15px 18px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.05);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{padding:10px 18px;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:linear-gradient(135deg,var(--green),var(--green-dark));color:#fff;box-shadow:0 2px 8px rgba(7,193,96,.25)}
+.btn-primary:hover{box-shadow:0 4px 14px rgba(7,193,96,.35)}
+.btn-ghost{background:#f2f3f5;color:var(--text2)}
+.btn-ghost:hover{background:#e8eaed}
+.btn-danger{background:#fff1f0;color:var(--red)}
+.btn-danger:hover{background:#ffe3e0}
+.toolbar .spacer{flex:1}
+
+/* 表格 */
+.table-wrap{background:#fff;border-radius:11px;box-shadow:0 1px 4px rgba(0,0,0,.05);overflow:hidden}
+.tbl-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;white-space:nowrap}
+thead th{background:#fafbfc;font-size:11px;font-weight:600;color:var(--text2);padding:11px 12px;text-align:right;border-bottom:1px solid #eceef1;position:sticky;top:0;z-index:1}
+thead th:first-child,thead th:nth-child(2),thead th:nth-child(3),thead th:nth-child(4){text-align:left}
+tbody td{font-size:12px;padding:11px 12px;text-align:right;border-bottom:1px solid #f5f6f8;font-variant-numeric:tabular-nums}
+tbody td:first-child,tbody td:nth-child(2),tbody td:nth-child(3),tbody td:nth-child(4){text-align:left}
+tbody tr:hover{background:#fafcfb}
+tbody tr:last-child td{border-bottom:none}
+.cell-client{font-weight:600;color:var(--text)}
+.cell-pos{color:var(--green);font-weight:600}
+.cell-neg{color:var(--red);font-weight:600}
+.tag{display:inline-block;padding:2px 9px;border-radius:9px;font-size:11px;background:#f0f2f5;color:var(--text2)}
+.tag.mix{background:#fff7e6;color:#d48806}
+.tag.full{background:var(--green-light);color:var(--green-dark)}
+.tag.brand{background:#eef4ff;color:#2b6cd4}
+.del-btn{padding:3px 9px;border:none;border-radius:6px;background:#fff1f0;color:var(--red);font-size:11px;cursor:pointer;font-family:inherit}
+.del-btn:hover{background:#ffe3e0}
+
+/* 空态 */
+.empty{padding:70px 24px;text-align:center;color:var(--text3)}
+.empty .big{font-size:46px;display:block;margin-bottom:14px;opacity:.22}
+.empty p{font-size:13px;line-height:1.9}
+
+/* 导入弹窗 */
+.mask{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+.mask.show{display:flex}
+.modal{background:#fff;border-radius:14px;padding:24px;width:100%;max-width:460px;box-shadow:0 16px 48px rgba(0,0,0,.25);max-height:85vh;overflow-y:auto}
+.modal h3{font-size:16px;font-weight:700;margin-bottom:6px}
+.modal .desc{font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.7}
+.modal textarea{width:100%;height:150px;border:1.5px solid #e0e0e0;border-radius:9px;padding:12px;font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace;resize:vertical;outline:none;line-height:1.5;word-break:break-all}
+.modal textarea:focus{border-color:var(--green)}
+.modal-btns{display:flex;gap:10px;margin-top:16px}
+.modal-btns .btn{flex:1;justify-content:center;padding:12px}
+
+.toast{position:fixed;left:50%;bottom:36px;transform:translateX(-50%) translateY(20px);background:rgba(0,0,0,.84);color:#fff;padding:12px 22px;border-radius:24px;font-size:13px;opacity:0;transition:all .3s;pointer-events:none;z-index:999;white-space:nowrap;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.notice{background:#fffbe6;border:1px solid #ffe58f;border-radius:9px;padding:12px 16px;font-size:12px;color:#8a6d00;line-height:1.7;margin-bottom:14px}
+.notice b{color:#664f00}
+
+@media(max-width:640px){
+  .topbar h1{font-size:15px}
+  .wrap{padding:14px}
+  .toolbar{padding:12px}
+  .btn{padding:9px 14px;font-size:12px}
+}
+</style>
+</head>
+<body>
+
+<!-- 登录 -->
+<div id="loginView">
+  <div class="login-box">
+    <div class="lock">🔐</div>
+    <h2>管理员登录</h2>
+    <div class="sub">双十一算账记录管理端</div>
+    <input type="password" class="login-input" id="pwdInput" placeholder="请输入管理员密码" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">登 录</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- 管理端 -->
+<div id="adminView">
+  <div class="topbar">
+    <div class="inner">
+      <div>
+        <h1>双十一算账记录 · 管理端</h1>
+        <div class="meta" id="topMeta">—</div>
+      </div>
+      <button class="btn-logout" onclick="logout()">退出登录</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <div class="stats" id="statsRow"></div>
+
+    <div class="notice">
+      <b>数据来源说明：</b>本页展示两类记录 — ① <b>本机记录</b>：在此浏览器测算过的客户，自动保存；② <b>导入记录</b>：客户把「结果码」发给你后，点「导入结果码」粘贴进来。客户在自己手机上测算的记录不会自动同步到这台设备。
+    </div>
+
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="exportCSV()">⬇ 导出全部 CSV</button>
+      <button class="btn btn-ghost" onclick="openImport()">＋ 导入结果码</button>
+      <div class="spacer"></div>
+      <button class="btn btn-danger" onclick="clearAll()">清空全部记录</button>
+    </div>
+
+    <div class="table-wrap">
+      <div class="tbl-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>客户名称</th>
+              <th>行业</th>
+              <th>身份</th>
+              <th>测算时间</th>
+              <th>标价</th>
+              <th>成本</th>
+              <th>广告成本</th>
+              <th>日销量</th>
+              <th>日常退货</th>
+              <th>活动退货</th>
+              <th>CVR</th>
+              <th>基线日利润</th>
+              <th>报名日利润</th>
+              <th>日销差额</th>
+              <th>成长卡</th>
+              <th>日增收合计</th>
+              <th>增幅</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div id="emptyState"></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="mask" id="importMask">
+  <div class="modal">
+    <h3>导入结果码</h3>
+    <div class="desc">把客户发来的结果码粘贴到下方（支持一次粘贴多条，每条一行）。</div>
+    <textarea id="importText" placeholder="WX11.eyJjbGllbnQiOi...</textarea>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeImport()">取消</button>
+      <button class="btn btn-primary" onclick="doImport()">确认导入</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var ADMIN_PWD = 'peipei11';
+var STORE_KEY = 'wx1111_calc_records';
+var AUTH_KEY = 'wx1111_admin_auth';
+
+function $(id){return document.getElementById(id)}
+
+function fmtN(n,d){
+  if(n===null||n===undefined||n===''||isNaN(n)) return '—';
+  d=d||0;
+  return Number(n).toLocaleString('zh-CN',{minimumFractionDigits:d,maximumFractionDigits:d});
+}
+function signN(n,d){ return (n>=0?'+':'')+fmtN(n,d); }
+
+var toastTimer=null;
+function toast(msg){
+  var t=$('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){ t.classList.remove('show'); },2200);
+}
+
+// ========== 登录 ==========
+function doLogin(){
+  var i=$('pwdInput');
+  if(i.value===ADMIN_PWD){
+    try{ sessionStorage.setItem(AUTH_KEY,'1'); }catch(e){}
+    showAdmin();
+  } else {
+    i.classList.add('err');
+    $('loginErr').textContent='密码错误，请重试';
+    i.value='';
+    setTimeout(function(){ i.classList.remove('err'); },400);
+  }
+}
+
+function logout(){
+  try{ sessionStorage.removeItem(AUTH_KEY); }catch(e){}
+  $('adminView').style.display='none';
+  $('loginView').style.display='flex';
+  $('pwdInput').value='';
+  $('loginErr').textContent='';
+}
+
+function showAdmin(){
+  $('loginView').style.display='none';
+  $('adminView').style.display='block';
+  render();
+}
+
+// ========== 记录读写 ==========
+function loadRecords(){
+  try{ return JSON.parse(localStorage.getItem(STORE_KEY)||'[]'); }catch(e){ return []; }
+}
+function saveRecords(list){
+  try{ localStorage.setItem(STORE_KEY,JSON.stringify(list)); }catch(e){ toast('保存失败，存储空间可能已满'); }
+}
+
+// ========== 渲染 ==========
+function render(){
+  var list=loadRecords();
+  list.sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
+
+  // 统计
+  var n=list.length;
+  var totalGain=0, posCount=0;
+  for(var i=0;i<n;i++){
+    totalGain+=(list[i].total||0);
+    if((list[i].total||0)>=0) posCount++;
+  }
+  $('statsRow').innerHTML=
+     '<div class="stat"><div class="k">记录数</div><div class="n">'+n+'</div></div>'
+    +'<div class="stat"><div class="k">盈利客户数</div><div class="n g">'+posCount+'</div></div>'
+    +'<div class="stat"><div class="k">亏损客户数</div><div class="n '+(n-posCount>0?'r':'')+'">'+(n-posCount)+'</div></div>'
+    +'<div class="stat"><div class="k">日增收合计</div><div class="n '+(totalGain>=0?'g':'r')+'">'+signN(totalGain,0)+'</div></div>';
+
+  $('topMeta').textContent='共 '+n+' 条记录 · 管理端';
+
+  if(n===0){
+    $('tbody').innerHTML='';
+    $('emptyState').innerHTML='<div class="empty"><span class="big">📋</span><p>暂无算账记录<br>可点击「导入结果码」粘贴客户发来的结果</p></div>';
+    return;
+  }
+  $('emptyState').innerHTML='';
+
+  var html='';
+  for(var j=0;j<n;j++){
+    var r=list[j];
+    var idCls = r.identity==='普通商家'?'mix':(r.identity==='品牌好店'?'brand':'full');
+    var t = r.ts ? new Date(r.ts) : null;
+    var tStr = t ? (t.getMonth()+1)+'/'+t.getDate()+' '+String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0') : '—';
+    var tot = r.total||0;
+    var pct = r.pct||0;
+
+    html+='<tr data-client="'+esc(r.client)+'">'
+      +'<td class="cell-client">'+esc(r.client)+'</td>'
+      +'<td>'+esc(r.industry)+'</td>'
+      +'<td><span class="tag '+idCls+'">'+esc(r.identity)+'</span></td>'
+      +'<td style="color:var(--text3);font-size:11px">'+tStr+'</td>'
+      +'<td>'+fmtN(r.price)+'</td>'
+      +'<td>'+fmtN(r.cost)+'</td>'
+      +'<td>'+fmtN(r.adCost)+'</td>'
+      +'<td>'+fmtN(r.sales)+'</td>'
+      +'<td>'+fmtN(r.retBase,1)+'%</td>'
+      +'<td>'+fmtN(r.retAct,1)+'%</td>'
+      +'<td>'+(r.cvr!==''&&r.cvr!==undefined?'+'+r.cvr+'%':'—')+'</td>'
+      +'<td>'+fmtN(r.bDaily,0)+'</td>'
+      +'<td>'+fmtN(r.rDaily,0)+'</td>'
+      +'<td class="'+(r.diff>=0?'cell-pos':'cell-neg')+'">'+signN(r.diff,0)+'</td>'
+      +'<td>'+(r.gcOn?(fmtN(r.gcProfit,0)+'/'+fmtN(r.gcPoints,0)+'点'):'未报名')+'</td>'
+      +'<td class="'+(tot>=0?'cell-pos':'cell-neg')+'">'+signN(tot,0)+'</td>'
+      +'<td class="'+(pct>=0?'cell-pos':'cell-neg')+'">'+signN(pct,1)+'%</td>'
+      +'<td><button class="del-btn" onclick="delOne(\''+esc(r.client).replace(/'/g,"\\'")+'\')">删除</button></td>'
+      +'</tr>';
+  }
+  $('tbody').innerHTML=html;
+}
+
+function esc(s){
+  if(s===null||s===undefined) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ========== 删除 ==========
+function delOne(client){
+  if(!confirm('确定删除「'+client+'」的记录？')) return;
+  var list=loadRecords().filter(function(r){ return r.client!==client; });
+  saveRecords(list);
+  render();
+  toast('已删除');
+}
+
+function clearAll(){
+  var list=loadRecords();
+  if(list.length===0){ toast('暂无记录'); return; }
+  if(!confirm('确定清空全部 '+list.length+' 条记录？此操作不可恢复。')) return;
+  saveRecords([]);
+  render();
+  toast('已清空');
+}
+
+// ========== 导入结果码 ==========
+function openImport(){
+  $('importText').value='';
+  $('importMask').classList.add('show');
+  setTimeout(function(){ $('importText').focus(); },60);
+}
+function closeImport(){ $('importMask').classList.remove('show'); }
+$('importMask').addEventListener('click',function(e){ if(e.target===this) closeImport(); });
+
+function decodeCode(str){
+  str=String(str||'').trim();
+  if(!str) return null;
+  if(str.indexOf('WX11.')===0) str=str.slice(5);
+  try{
+    var json=decodeURIComponent(escape(atob(str)));
+    var obj=JSON.parse(json);
+    if(!obj||!obj.client) return null;
+    return obj;
+  }catch(e){ return null; }
+}
+
+function doImport(){
+  var raw=$('importText').value||'';
+  // 支持换行、空格、逗号分隔
+  var parts=raw.split(/[\s,;]+/).filter(function(s){ return s.length>10; });
+  if(parts.length===0){ toast('请粘贴结果码'); return; }
+
+  var list=loadRecords();
+  var added=0, updated=0, failed=0;
+
+  for(var i=0;i<parts.length;i++){
+    var obj=decodeCode(parts[i]);
+    if(!obj){ failed++; continue; }
+    if(!obj.ts) obj.ts=Date.now();
+    var idx=-1;
+    for(var k=0;k<list.length;k++){ if(list[k].client===obj.client) idx=k; }
+    if(idx>=0){ list[idx]=obj; updated++; }
+    else { list.push(obj); added++; }
+  }
+
+  saveRecords(list);
+  closeImport();
+  render();
+
+  var msg=[];
+  if(added) msg.push('新增'+added+'条');
+  if(updated) msg.push('更新'+updated+'条');
+  if(failed) msg.push('失败'+failed+'条');
+  toast(msg.length?msg.join('，'):'未识别到有效结果码');
+}
+
+// ========== CSV导出 ==========
+function exportCSV(){
+  var list=loadRecords();
+  if(list.length===0){ toast('暂无记录可导出'); return; }
+  list.sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
+
+  var BOM='\uFEFF';
+  var head=[
+    '客户名称','行业','商家身份','测算时间',
+    '商品标价(元)','每单成本(元)','广告转化成本/单(元)','日销量基线',
+    '日常退货率(%)','活动退货率(%)','CVR提升(%)','CVR价格档',
+    '基线利润/单(元)','基线有效单量','基线日利润(元)',
+    '券成本/单(元)','报名利润/单(元)','报名有效单量','报名日利润(元)',
+    '日销利润差额(元)','日销差额比例(%)',
+    '是否报名大场激励','大场有效GMV(万元)','成长卡点数','成长卡广告额度(元)','成长卡额外利润(元)',
+    '日增收合计(元)'
+  ];
+
+  function cell(s){
+    if(s===null||s===undefined) return '';
+    s=String(s);
+    if(/[",\n\r]/.test(s)) return '"'+s.replace(/"/g,'""')+'"';
+    return s;
+  }
+
+  var lines=[head.map(cell).join(',')];
+  for(var i=0;i<list.length;i++){
+    var r=list[i];
+    var t=r.ts?new Date(r.ts):null;
+    var tStr=t?(t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0')+' '+String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0')):'';
+    var row=[
+      r.client, r.industry, r.identity, tStr,
+      r.price, r.cost, r.adCost, r.sales,
+      r.retBase, r.retAct, r.cvr, r.cvrTier,
+      r.bProfit, r.bSalesEff, r.bDaily,
+      r.mCost, r.rProfit, r.rSalesEff, r.rDaily,
+      r.diff, r.pct,
+      r.gcOn?'是':'否', r.gmv, r.gcPoints, r.gcBudget, r.gcProfit,
+      r.total
+    ];
+    lines.push(row.map(cell).join(','));
+  }
+
+  var csv=BOM+lines.join('\r\n');
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  var d=new Date();
+  var stamp=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'_'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0');
+  a.href=url;
+  a.download='双十一算账记录_'+stamp+'.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); },120);
+  toast('已导出 '+list.length+' 条记录');
+}
+
+// ========== 初始化 ==========
+(function(){
+  var authed=false;
+  try{ authed=sessionStorage.getItem(AUTH_KEY)==='1'; }catch(e){}
+  if(authed){ showAdmin(); }
+  else { $('loginView').style.display='flex'; }
+})();
+</script>
+</body>
+</html>
